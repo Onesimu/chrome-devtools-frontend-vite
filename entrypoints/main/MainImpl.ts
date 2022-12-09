@@ -41,7 +41,7 @@ import * as Root from '../../core/root/root.js';
 import * as SDK from '../../core/sdk/sdk.js';
 import * as Bindings from '../../models/bindings/bindings.js';
 import * as Extensions from '../../models/extensions/extensions.js';
-import * as IssuesManager from '../../models/issues_manager/issues_manager.js';
+// import * as IssuesManager from '../../models/issues_manager/issues_manager.js';
 import * as Logs from '../../models/logs/logs.js';
 import * as Persistence from '../../models/persistence/persistence.js';
 import * as Workspace from '../../models/workspace/workspace.js';
@@ -510,13 +510,13 @@ export class MainImpl {
     Logs.NetworkLog.NetworkLog.instance();
     SDK.FrameManager.FrameManager.instance();
     Logs.LogManager.LogManager.instance();
-    IssuesManager.IssuesManager.IssuesManager.instance({
-      forceNew: true,
-      ensureFirst: true,
-      showThirdPartyIssuesSetting: IssuesManager.Issue.getShowThirdPartyIssuesSetting(),
-      hideIssueSetting: IssuesManager.IssuesManager.getHideIssueByCodeSetting(),
-    });
-    IssuesManager.ContrastCheckTrigger.ContrastCheckTrigger.instance();
+    // IssuesManager.IssuesManager.IssuesManager.instance({
+    //   forceNew: true,
+    //   ensureFirst: true,
+    //   showThirdPartyIssuesSetting: IssuesManager.Issue.getShowThirdPartyIssuesSetting(),
+    //   hideIssueSetting: IssuesManager.IssuesManager.getHideIssueByCodeSetting(),
+    // });
+    // IssuesManager.ContrastCheckTrigger.ContrastCheckTrigger.instance();
 
     // @ts-ignore layout test global
     self.SDK.consoleModel = SDK.ConsoleModel.ConsoleModel.instance();
