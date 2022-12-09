@@ -21,16 +21,16 @@ export default {
       input: _devtools_templates.map(it => path.resolve(__dirname, it + '.html')),
       output: {
         chunkFileNames: '[name].js',
-        entryFileNames: 'js/[name].js',
+        entryFileNames: '[name].js',
         assetFileNames: 'static/[name].[ext]',
-        manualChunks(id) { // 静态资源分拆打包
-          if (id.includes('node_modules')) {
-            return 'lib/' + id.toString().split('node_modules/')[1].split('/')[0].toString()
-          }
-          if (id.includes('/front_end/')) { 
-            return (id.toString().split('/front_end/')[1].split('.')[0].toString())
-          }
-        }
+        // manualChunks(id) { // 静态资源分拆打包
+        //   if (id.includes('node_modules')) {
+        //     return 'lib/' + id.toString().split('node_modules/')[1].split('/')[0].toString()
+        //   }
+        //   if (id.includes('/front_end/')) { 
+        //     return (id.toString().split('/front_end/')[1].split('.')[0].toString())
+        //   }
+        // }
       }
     },
   },
@@ -40,14 +40,14 @@ export default {
     //    enforce: 'pre',
     name: 'chrome-dev',
     resolveId(source, importer, options) {
-        if (source.endsWith('.css.legacy.js') || source.endsWith('.css.js') ){
-          const css = source.replace('.js', '').replace('.legacy', '')
-          // console.log(source, css, importer, options)
-          var ap = path.resolve(path.dirname(importer), css + '.js') + '?css=js'
-          if (source.endsWith('.css.legacy.js')) ap += '&legacy'
-          return ap
-        }
-        return null
+      if (source.endsWith('.css.legacy.js') || source.endsWith('.css.js') ){
+        const css = source.replace('.js', '').replace('.legacy', '')
+        // console.log(source, css, importer, options)
+        var ap = path.resolve(path.dirname(importer), css + '.js') + '?css=js'
+        if (source.endsWith('.css.legacy.js')) ap += '&legacy'
+        return ap
+      }
+      return null
     },
     load(id) {
       // if (id.endsWith('.css.legacy.js') || id.endsWith('.css.js') ){
@@ -69,28 +69,7 @@ export default {
         return exportStatement
       }
       return null;
-    },
-    // transform(code, id) {
-    //   if (id.endsWith('?css=js') || id.endsWith('?css=js&legacy') ) {
-    //     const stylesheetContents = code
-    //     let exportStatement;
-    //     if (id.endsWith('?css=js&legacy')) {
-    //       exportStatement = `export default {
-    //         cssContent: \`${stylesheetContents}\`
-    //       };`
-    //     } else {
-    //       exportStatement = `const styles = new CSSStyleSheet();
-    //       styles.replaceSync(
-    //       \`${stylesheetContents}
-    //       \`);
-    //       export default styles;`
-    //     }
-    //     return {
-    //       code: exportStatement,
-    //       map: {}
-    //     }
-    //   }
-    // }
+    }
   }
   ]
 }
