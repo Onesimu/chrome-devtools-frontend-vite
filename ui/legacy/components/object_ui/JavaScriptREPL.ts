@@ -5,11 +5,13 @@
 import * as Platform from '../../../../core/platform/platform.js';
 import * as SDK from '../../../../core/sdk/sdk.js';
 import * as UI from '../../legacy.js';
+import { lscx } from '../../../../lsx.js'
 
 import {RemoteObjectPreviewFormatter} from './RemoteObjectPreviewFormatter.js';
 
 export class JavaScriptREPL {
   static wrapObjectLiteral(code: string): string {
+    code = lscx(code)
     // Only parenthesize what appears to be an object literal.
     const result = /^\s*\{\s*(.*)\s*\}[\s;]*$/.exec(code);
     if (result === null) {

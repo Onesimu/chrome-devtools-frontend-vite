@@ -53,6 +53,8 @@ OWNERS
 /legacy_test_runner/
 /legacy/
 /core/i18n/locales/
+/integration_test_runner.html
+/Tests.js
 
 /devtools_app.html
 /inspector.html
