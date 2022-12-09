@@ -517,8 +517,8 @@ export namespace ProtocolMapping {
     'Tethering.accepted': [Protocol.Tethering.AcceptedEvent];
     'Tracing.bufferUsage': [Protocol.Tracing.BufferUsageEvent];
     /**
-     * Contains an bucket of collected trace events. When tracing is stopped collected events will be
-     * send as a sequence of dataCollected events followed by tracingComplete event.
+     * Contains a bucket of collected trace events. When tracing is stopped collected events will be
+     * sent as a sequence of dataCollected events followed by tracingComplete event.
      */
     'Tracing.dataCollected': [Protocol.Tracing.DataCollectedEvent];
     /**
@@ -592,6 +592,14 @@ export namespace ProtocolMapping {
      * Notifies that an AudioNode is disconnected to an AudioParam.
      */
     'WebAudio.nodeParamDisconnected': [Protocol.WebAudio.NodeParamDisconnectedEvent];
+    /**
+     * Triggered when a credential is added to an authenticator.
+     */
+    'WebAuthn.credentialAdded': [Protocol.WebAuthn.CredentialAddedEvent];
+    /**
+     * Triggered when a credential is used in a webauthn assertion.
+     */
+    'WebAuthn.credentialAsserted': [Protocol.WebAuthn.CredentialAssertedEvent];
     /**
      * This can be called multiple times, and can be used to set / override /
      * remove player properties. A null propValue indicates removal.
@@ -1245,7 +1253,7 @@ export namespace ProtocolMapping {
      * Requests cache names.
      */
     'CacheStorage.requestCacheNames': {
-      paramsType: [Protocol.CacheStorage.RequestCacheNamesRequest];
+      paramsType: [Protocol.CacheStorage.RequestCacheNamesRequest?];
       returnType: Protocol.CacheStorage.RequestCacheNamesResponse;
     };
     /**
@@ -1659,9 +1667,10 @@ export namespace ProtocolMapping {
       returnType: Protocol.DOM.GetFrameOwnerResponse;
     };
     /**
-     * Returns the container of the given node based on container query conditions.
-     * If containerName is given, it will find the nearest container with a matching name;
-     * otherwise it will find the nearest container regardless of its container name.
+     * Returns the query container of the given node based on container query
+     * conditions: containerName, physical, and logical axes. If no axes are
+     * provided, the style container is returned, which is the direct parent or the
+     * closest element with a matching container-name.
      */
     'DOM.getContainerForNode': {
       paramsType: [Protocol.DOM.GetContainerForNodeRequest];
@@ -3470,6 +3479,13 @@ export namespace ProtocolMapping {
       returnType: void;
     };
     /**
+     * Registers storage key to be notified when an update occurs to its cache storage list.
+     */
+    'Storage.trackCacheStorageForStorageKey': {
+      paramsType: [Protocol.Storage.TrackCacheStorageForStorageKeyRequest];
+      returnType: void;
+    };
+    /**
      * Registers origin to be notified when an update occurs to its IndexedDB.
      */
     'Storage.trackIndexedDBForOrigin': {
@@ -3488,6 +3504,13 @@ export namespace ProtocolMapping {
      */
     'Storage.untrackCacheStorageForOrigin': {
       paramsType: [Protocol.Storage.UntrackCacheStorageForOriginRequest];
+      returnType: void;
+    };
+    /**
+     * Unregisters storage key from receiving notifications for cache storage.
+     */
+    'Storage.untrackCacheStorageForStorageKey': {
+      paramsType: [Protocol.Storage.UntrackCacheStorageForStorageKeyRequest];
       returnType: void;
     };
     /**
@@ -3547,6 +3570,13 @@ export namespace ProtocolMapping {
     'Storage.getSharedStorageEntries': {
       paramsType: [Protocol.Storage.GetSharedStorageEntriesRequest];
       returnType: Protocol.Storage.GetSharedStorageEntriesResponse;
+    };
+    /**
+     * Sets entry with `key` and `value` for a given origin's shared storage.
+     */
+    'Storage.setSharedStorageEntry': {
+      paramsType: [Protocol.Storage.SetSharedStorageEntryRequest];
+      returnType: void;
     };
     /**
      * Deletes entry for `key` (if it exists) for a given origin's shared storage.
@@ -4165,8 +4195,8 @@ export namespace ProtocolMapping {
       returnType: void;
     };
     /**
-     * Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions or
-     * no exceptions. Initial pause on exceptions state is `none`.
+     * Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions,
+     * or caught exceptions, no exceptions. Initial pause on exceptions state is `none`.
      */
     'Debugger.setPauseOnExceptions': {
       paramsType: [Protocol.Debugger.SetPauseOnExceptionsRequest];

@@ -315,7 +315,7 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
   private showSettingsPaneSetting!: Common.Settings.Setting<boolean>;
   private settingsPane!: UI.Widget.Widget;
   private controller!: TimelineController|null;
-  private cpuProfilers!: SDK.CPUProfilerModel.CPUProfilerModel[]|null;
+  private cpuProfiler!: SDK.CPUProfilerModel.CPUProfilerModel|null;
   private clearButton!: UI.Toolbar.ToolbarButton;
   private loadButton!: UI.Toolbar.ToolbarButton;
   private saveButton!: UI.Toolbar.ToolbarButton;
@@ -426,6 +426,18 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
         Extensions.ExtensionServer.Events.TraceProviderAdded, this.appendExtensionsToToolbar, this);
     SDK.TargetManager.TargetManager.instance().addEventListener(
         SDK.TargetManager.Events.SuspendStateChanged, this.onSuspendStateChanged, this);
+    if (Root.Runtime.experiments.isEnabled('timelineAsConsoleProfileResultPanel')) {
+      const profilerModels = SDK.TargetManager.TargetManager.instance().models(SDK.CPUProfilerModel.CPUProfilerModel);
+      for (const model of profilerModels) {
+        for (const message of model.registeredConsoleProfileMessages) {
+          this.consoleProfileFinished(message);
+        }
+      }
+
+      SDK.TargetManager.TargetManager.instance().addModelListener(
+          SDK.CPUProfilerModel.CPUProfilerModel, SDK.CPUProfilerModel.Events.ConsoleProfileFinished,
+          event => this.consoleProfileFinished(event.data), this);
+    }
   }
 
   static instance(opts: {
@@ -819,6 +831,59 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
     return await view.widget() as Coverage.CoverageView.CoverageView;
   }
 
+  async #evaluateInspectedURL(): Promise<Platform.DevToolsPath.UrlString> {
+    if (!this.controller) {
+      return Platform.DevToolsPath.EmptyUrlString;
+    }
+    const mainTarget = this.controller.mainTarget();
+    // target.inspectedURL is reliably populated, however it lacks any url #hash
+    const inspectedURL = mainTarget.inspectedURL();
+
+    // We'll use the navigationHistory to acquire the current URL including hash
+    const resourceTreeModel = mainTarget.model(SDK.ResourceTreeModel.ResourceTreeModel);
+    const navHistory = resourceTreeModel && await resourceTreeModel.navigationHistory();
+    if (!resourceTreeModel || !navHistory) {
+      return inspectedURL;
+    }
+
+    const {currentIndex, entries} = navHistory;
+    const navigationEntry = entries[currentIndex];
+    return navigationEntry.url as Platform.DevToolsPath.UrlString;
+  }
+
+  async #navigateToAboutBlank(): Promise<void> {
+    const aboutBlankNavigationComplete = new Promise<void>(async (resolve, reject) => {
+      if (!this.controller) {
+        reject('Could not find TimelineController');
+        return;
+      }
+      const target = this.controller.mainTarget();
+      const resourceModel = target.model(SDK.ResourceTreeModel.ResourceTreeModel);
+      if (!resourceModel) {
+        reject('Could not load resourceModel');
+        return;
+      }
+
+      // To clear out the page and any state from prior test runs, we
+      // navigate to about:blank before initiating the trace recording.
+      // Once we have navigated to about:blank, we start recording and
+      // then navigate to the original page URL, to ensure we profile the
+      // page load.
+      function waitForAboutBlank(event: Common.EventTarget.EventTargetEvent<SDK.ResourceTreeModel.ResourceTreeFrame>):
+          void {
+        if (event.data.url === 'about:blank') {
+          resolve();
+        } else {
+          reject(`Unexpected navigation to ${event.data.url}`);
+        }
+        resourceModel?.removeEventListener(SDK.ResourceTreeModel.Events.FrameNavigated, waitForAboutBlank);
+      }
+      resourceModel.addEventListener(SDK.ResourceTreeModel.Events.FrameNavigated, waitForAboutBlank);
+      await resourceModel.navigate('about:blank' as Platform.DevToolsPath.UrlString);
+    });
+    await aboutBlankNavigationComplete;
+  }
+
   private async startRecording(): Promise<void> {
     console.assert(!this.statusPane, 'Status pane is already opened.');
     this.setState(State.StartPending);
@@ -851,27 +916,51 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
       }
       this.setUIControlsEnabled(false);
       this.hideLandingPage();
+      if (!this.controller) {
+        throw new Error('Could not create Timeline controller');
+      }
+
+      const urlToTrace = await this.#evaluateInspectedURL();
+
       try {
+        // If we are doing "Reload & record", we first navigate the page to
+        // about:blank. This is to ensure any data on the timeline from any
+        // previous performance recording is lost, avoiding the problem where a
+        // timeline will show data & screenshots from a previous page load that
+        // was not relevant.
+        if (this.recordingPageReload) {
+          await this.#navigateToAboutBlank();
+        }
+        // Order is important here: we tell the controller to start recording, which enables tracing.
         const response = await this.controller.startRecording(recordingOptions, enabledTraceProviders);
         if (response.getError()) {
           throw new Error(response.getError());
-        } else {
-          this.recordingStarted();
         }
+        // Once we get here, we know tracing is active.
+        // This is when, if the user has hit "Reload & Record" that we now need to navigate to the original URL.
+        // If the user has just hit "record", we don't do any navigating.
+        const recordingConfig = this.recordingPageReload ? {navigateToUrl: urlToTrace} : undefined;
+        this.recordingStarted(recordingConfig);
       } catch (e) {
         this.recordingFailed(e.message);
       }
     } else {
       this.showRecordingStarted();
+      // Only profile the first target devtools connects to. If we profile all target, but this will cause some bugs
+      // like time for the function is calculated wrong, because the profiles will be concated and sorted together,
+      // so the total time will be amplified.
+      // Multiple targets problem might happen when you inspect multiple node servers on different port at same time,
+      // or when you let DevTools listen to both locolhost:9229 & 127.0.0.1:9229.
+      this.cpuProfiler = SDK.TargetManager.TargetManager.instance().models(SDK.CPUProfilerModel.CPUProfilerModel)[0];
+      if (this.cpuProfiler) {
+        this.setUIControlsEnabled(false);
+        this.hideLandingPage();
 
-      this.cpuProfilers = SDK.TargetManager.TargetManager.instance().models(SDK.CPUProfilerModel.CPUProfilerModel);
-      this.setUIControlsEnabled(false);
-      this.hideLandingPage();
+        await SDK.TargetManager.TargetManager.instance().suspendAllTargets('performance-timeline');
+        await this.cpuProfiler.startRecording();
 
-      await SDK.TargetManager.TargetManager.instance().suspendAllTargets('performance-timeline');
-      await Promise.all(this.cpuProfilers.map(model => model.startRecording()));
-
-      this.recordingStarted();
+        this.recordingStarted();
+      }
     }
   }
 
@@ -896,15 +985,12 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
       this.controller = null;
       return;
     }
-    if (this.cpuProfilers) {
-      const profiles = await Promise.all(this.cpuProfilers.map(model => model.stopRecording()));
+    if (this.cpuProfiler) {
+      const profile = await this.cpuProfiler.stopRecording();
       let traceEvents: SDK.TracingManager.EventPayload[] = [];
       try {
-        for (const profile of profiles) {
-          const traceEvent = TimelineModel.TimelineJSProfile.TimelineJSProfileProcessor.buildTraceProfileFromCpuProfile(
-              profile, /* tid */ 1, /* injectPageEvent */ true);
-          traceEvents = traceEvents.concat(traceEvent);
-        }
+        traceEvents = TimelineModel.TimelineJSProfile.TimelineJSProfileProcessor.buildTraceProfileFromCpuProfile(
+            profile, /* tid */ 1, /* injectPageEvent */ true);
       } catch (e) {
         console.error(e.stack);
         return;
@@ -913,8 +999,7 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
       this.loadFromEvents(traceEvents);
 
       this.setUIControlsEnabled(true);
-      this.cpuProfilers.map(model => model.dispose());
-      this.cpuProfilers = null;
+      this.cpuProfiler = null;
 
       await SDK.TargetManager.TargetManager.instance().resumeAllTargets();
     }
@@ -947,6 +1032,22 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
 
   private onSuspendStateChanged(): void {
     this.updateTimelineControls();
+  }
+
+  private consoleProfileFinished(data: SDK.CPUProfilerModel.ProfileFinishedData): void {
+    if (!isNode) {
+      return;
+    }
+
+    try {
+      const traceEvent = TimelineModel.TimelineJSProfile.TimelineJSProfileProcessor.buildTraceProfileFromCpuProfile(
+          data.cpuProfile, /* tid */ 1, /* injectPageEvent */ true);
+      this.loadFromEvents(traceEvent);
+    } catch (e) {
+      console.error(e.stack);
+      return;
+    }
+    void UI.InspectorView.InspectorView.instance().showPanel('timeline');
   }
 
   private updateTimelineControls(): void {
@@ -1043,14 +1144,23 @@ export class TimelinePanel extends UI.Panel.Panel implements Client, TimelineMod
     this.updateTimelineControls();
   }
 
-  private recordingStarted(): void {
-    if (this.recordingPageReload && this.controller) {
+  private recordingStarted(config?: {navigateToUrl: Platform.DevToolsPath.UrlString}): void {
+    if (config && this.recordingPageReload && this.controller) {
+      // If the user hit "Reload & record", by this point we have:
+      // 1. Navigated to about:blank
+      // 2. Initiated tracing.
+      // We therefore now should navigate back to the original URL that the user wants to profile.
       const target = this.controller.mainTarget();
       const resourceModel = target.model(SDK.ResourceTreeModel.ResourceTreeModel);
-      if (resourceModel) {
-        resourceModel.reloadPage();
+      if (!resourceModel) {
+        this.recordingFailed('Could not navigate to original URL');
+        return;
       }
+      // We don't need to await this because we are purposefully showing UI
+      // progress as the page loads & tracing is underway.
+      void resourceModel.navigate(config.navigateToUrl);
     }
+
     this.reset();
     this.setState(State.Recording);
     this.showRecordingStarted();

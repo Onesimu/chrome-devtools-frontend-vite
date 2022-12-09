@@ -17,16 +17,7 @@ declare global {
 export const enum Variant {
   PRIMARY = 'primary',
   SECONDARY = 'secondary',
-  // This is a bit confusing: the TOOLBAR variant is the historical variant
-  // that has been used when adding toolbar icons to legacy DevTools toolbars.
-  // In July 2022 we began work on the new unified toolbar, which will first be
-  // built for Performance Insights and then rolled out across the panels. Once
-  // that work is done, we can remove these two variants and revert back to
-  // having one.
-  // We need to differentiate because the unified toolbar icons are 16px in
-  // size, not 18px (which the toolbar small icons are).
   TOOLBAR = 'toolbar',
-  UNIFIED_TOOLBAR_2022 = 'unified_toolbar_2022',
   ROUND = 'round',
 }
 
@@ -78,22 +69,7 @@ export type ButtonData = {
   title?: string,
   iconWidth?: string,
   iconHeight?: string,
-}|{
-  variant: Variant.UNIFIED_TOOLBAR_2022,
-  iconUrl: string,
-  disabled?: boolean,
-  active?: boolean,
-  title?: string,
 };
-
-interface ButtonElementInternals extends ElementInternals {
-  readonly form: HTMLFormElement|null;
-  readonly validity: ValidityState;
-  readonly willValidate: boolean;
-  readonly validationMessage: string;
-  checkValidity(): void;
-  reportValidity(): void;
-}
 
 export class Button extends HTMLElement {
   static formAssociated = true;
@@ -109,7 +85,7 @@ export class Button extends HTMLElement {
     type: 'button',
   };
   #isEmpty = true;
-  #internals = this.attachInternals() as ButtonElementInternals;
+  #internals = this.attachInternals();
 
   constructor() {
     super();
@@ -241,7 +217,7 @@ export class Button extends HTMLElement {
     if (!this.#props.variant) {
       throw new Error('Button requires a variant to be defined');
     }
-    if (this.#props.variant === Variant.TOOLBAR || this.#props.variant === Variant.UNIFIED_TOOLBAR_2022) {
+    if (this.#props.variant === Variant.TOOLBAR) {
       if (!this.#props.iconUrl) {
         throw new Error('Toolbar button requires an icon');
       }
@@ -260,8 +236,7 @@ export class Button extends HTMLElement {
     const classes = {
       primary: this.#props.variant === Variant.PRIMARY,
       secondary: this.#props.variant === Variant.SECONDARY,
-      toolbar: this.#props.variant === Variant.TOOLBAR || this.#props.variant === Variant.UNIFIED_TOOLBAR_2022,
-      'unified-toolbar-2022': this.#props.variant === Variant.UNIFIED_TOOLBAR_2022,
+      toolbar: this.#props.variant === Variant.TOOLBAR,
       round: this.#props.variant === Variant.ROUND,
       'text-with-icon': Boolean(this.#props.iconUrl) && !this.#isEmpty,
       'only-icon': Boolean(this.#props.iconUrl) && this.#isEmpty,
@@ -326,10 +301,10 @@ export class Button extends HTMLElement {
   get willValidate(): boolean {
     return this.#internals.willValidate;
   }
-  checkValidity(): void {
+  checkValidity(): boolean {
     return this.#internals.checkValidity();
   }
-  reportValidity(): void {
+  reportValidity(): boolean {
     return this.#internals.reportValidity();
   }
 }

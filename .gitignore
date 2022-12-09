@@ -49,5 +49,7 @@ public/
 *.gni
 OWNERS
 .clang-format
+.eslintrc.js
 legacy_test_runner/
 legacy/
+core/i18n/locales/

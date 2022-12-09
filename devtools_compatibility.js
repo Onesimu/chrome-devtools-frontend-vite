@@ -395,9 +395,8 @@
    */
   const EnumeratedHistogram = {
     ActionTaken: 'DevTools.ActionTaken',
-    BreakpointConditionEdited: 'Devtools.BreakpointConditionEdited',
+    BreakpointWithConditionAdded: 'DevTools.BreakpointWithConditionAdded',
     BreakpointEditDialogRevealedFrom: 'DevTools.BreakpointEditDialogRevealedFrom',
-    ConsoleShowsCorsErrors: 'DevTools.ConsoleShowsCorsErrors',
     CSSHintShown: 'DevTools.CSSHintShown',
     DeveloperResourceLoaded: 'DevTools.DeveloperResourceLoaded',
     DeveloperResourceScheme: 'DevTools.DeveloperResourceScheme',
@@ -411,6 +410,7 @@
     KeybindSetSettingChanged: 'DevTools.KeybindSetSettingChanged',
     KeyboardShortcutFired: 'DevTools.KeyboardShortcutFired',
     Language: 'DevTools.Language',
+    LighthouseModeRun: 'DevTools.LighthouseModeRun',
     LinearMemoryInspectorRevealedFrom: 'DevTools.LinearMemoryInspector.RevealedFrom',
     LinearMemoryInspectorTarget: 'DevTools.LinearMemoryInspector.Target',
     ManifestSectionSelected: 'DevTools.ManifestSectionSelected',
@@ -423,6 +423,8 @@
     RecordingReplayStarted: 'DevTools.RecordingReplayStarted',
     RecordingToggled: 'DevTools.RecordingToggled',
     SidebarPaneShown: 'DevTools.SidebarPaneShown',
+    SourcesPanelFileOpened: 'DevTools.SourcesPanelFileOpened',
+    NetworkPanelResponsePreviewOpened: 'DevTools.NetworkPanelResponsePreviewOpened',
     StyleTextCopied: 'DevTools.StyleTextCopied',
     SyncSetting: 'DevTools.SyncSetting',
   };
@@ -1119,6 +1121,7 @@
       'networkShowPrimaryLoadWaterfall',
       'networkSidebarWidth',
       'openLinkHandler',
+      'pauseOnUncaughtException',
       'pauseOnCaughtException',
       'pauseOnExceptionEnabled',
       'preserveConsoleLog',

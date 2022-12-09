@@ -369,7 +369,6 @@ export enum EnumeratedHistogram {
   LinearMemoryInspectorRevealedFrom = 'DevTools.LinearMemoryInspector.RevealedFrom',
   LinearMemoryInspectorTarget = 'DevTools.LinearMemoryInspector.Target',
   Language = 'DevTools.Language',
-  ConsoleShowsCorsErrors = 'DevTools.ConsoleShowsCorsErrors',
   SyncSetting = 'DevTools.SyncSetting',
   RecordingEdited = 'DevTools.RecordingEdited',
   RecordingExported = 'DevTools.RecordingExported',
@@ -377,7 +376,10 @@ export enum EnumeratedHistogram {
   RecordingReplaySpeed = 'DevTools.RecordingReplaySpeed',
   RecordingReplayStarted = 'DevTools.RecordingReplayStarted',
   RecordingToggled = 'DevTools.RecordingToggled',
+  SourcesPanelFileOpened = 'DevTools.SourcesPanelFileOpened',
+  NetworkPanelResponsePreviewOpened = 'DevTools.NetworkPanelResponsePreviewOpened',
   StyleTextCopied = 'DevTools.StyleTextCopied',
   ManifestSectionSelected = 'DevTools.ManifestSectionSelected',
   CSSHintShown = 'DevTools.CSSHintShown',
+  LighthouseModeRun = 'DevTools.LighthouseModeRun',
 }

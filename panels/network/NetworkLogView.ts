@@ -1694,7 +1694,7 @@ export class NetworkLogView extends Common.ObjectWrapper.eventMixin<EventTypes, 
   }
 
   async exportAll(): Promise<void> {
-    const mainTarget = SDK.TargetManager.TargetManager.instance().mainTarget();
+    const mainTarget = SDK.TargetManager.TargetManager.instance().mainFrameTarget();
     if (!mainTarget) {
       return;
     }
@@ -1719,6 +1719,7 @@ export class NetworkLogView extends Common.ObjectWrapper.eventMixin<EventTypes, 
         NetworkForward.UIRequestLocation.UIRequestLocation.responseHeaderMatch(request, {name: '', value: ''});
     const networkPersistanceManager = Persistence.NetworkPersistenceManager.NetworkPersistenceManager.instance();
     if (networkPersistanceManager.project()) {
+      Common.Settings.Settings.instance().moduleSetting('persistenceNetworkOverridesEnabled').set(true);
       await networkPersistanceManager.getOrCreateHeadersUISourceCodeFromUrl(request.url());
       await Common.Revealer.reveal(requestLocation);
     } else {  // If folder for local overrides has not been provided yet

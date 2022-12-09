@@ -10,6 +10,8 @@ import * as IssuesManager from '../../../models/issues_manager/issues_manager.js
 import * as NetworkForward from '../../../panels/network/forward/forward.js';
 import * as ComponentHelpers from '../../../ui/components/helpers/helpers.js';
 import * as LitHtml from '../../../ui/lit-html/lit-html.js';
+import * as Sources from '../../../panels/sources/sources.js';
+import * as UI from '../../../ui/legacy/legacy.js';
 
 import {
   type HeaderDescriptor,
@@ -197,6 +199,7 @@ export class ResponseHeaderSection extends HTMLElement {
     if (!this.#request) {
       return;
     }
+    this.#headersAreOverrideable = false;
     this.#headerEditors =
         this.#headerDetails.map(header => ({name: header.name, value: header.value, originalValue: header.value}));
     this.#markOverrides();
@@ -228,7 +231,6 @@ export class ResponseHeaderSection extends HTMLElement {
         header.valueEditable = this.#headersAreOverrideable;
       }
     } catch (error) {
-      this.#headersAreOverrideable = false;
       console.error(
           'Failed to parse', this.#uiSourceCode?.url() || 'source code file', 'for locally overriding headers.');
       this.#resetEditorState();
@@ -371,6 +373,7 @@ export class ResponseHeaderSection extends HTMLElement {
         this.#headerEditors[index].value = originalHeaders[0].value;
         this.#headerEditors[index].originalValue = originalHeaders[0].value;
         this.#headerEditors[index].isOverride = false;
+        this.#headerDetails[index].highlight = false;
       } else {
         // If there is no (or multiple) matching originalResonseHeader,
         // remove the header from the UI.
@@ -491,8 +494,8 @@ export class ResponseHeaderSection extends HTMLElement {
       return;
     }
 
-    const headerDescriptors: HeaderDescriptor[] =
-        this.#headerEditors.map((headerEditor, index) => ({...this.#headerDetails[index], ...headerEditor}));
+    const headerDescriptors: HeaderDescriptor[] = this.#headerEditors.map(
+        (headerEditor, index) => ({...this.#headerDetails[index], ...headerEditor, isResponseHeader: true}));
 
     // Disabled until https://crbug.com/1079231 is fixed.
     // clang-format off
@@ -500,7 +503,7 @@ export class ResponseHeaderSection extends HTMLElement {
       ${headerDescriptors.map((header, index) => html`
         <${HeaderSectionRow.litTagName} .data=${{
           header: header,
-        } as HeaderSectionRowData} @headeredited=${this.#onHeaderEdited} @headerremoved=${this.#onHeaderRemoved} data-index=${index}></${HeaderSectionRow.litTagName}>
+        } as HeaderSectionRowData} @headeredited=${this.#onHeaderEdited} @headerremoved=${this.#onHeaderRemoved} @enableheaderediting=${this.#onEnableHeaderEditingClick} data-index=${index}></${HeaderSectionRow.litTagName}>
       `)}
       ${this.#headersAreOverrideable ? html`
         <${Buttons.Button.Button.litTagName}
@@ -515,6 +518,23 @@ export class ResponseHeaderSection extends HTMLElement {
       ` : LitHtml.nothing}
     `, this.#shadow, {host: this});
     // clang-format on
+  }
+
+  async #onEnableHeaderEditingClick(): Promise<void> {
+    if (!this.#request) {
+      return;
+    }
+    const requestUrl = this.#request.url();
+    const networkPersistanceManager = Persistence.NetworkPersistenceManager.NetworkPersistenceManager.instance();
+    if (networkPersistanceManager.project()) {
+      Common.Settings.Settings.instance().moduleSetting('persistenceNetworkOverridesEnabled').set(true);
+      await networkPersistanceManager.getOrCreateHeadersUISourceCodeFromUrl(requestUrl);
+    } else {  // If folder for local overrides has not been provided yet
+      UI.InspectorView.InspectorView.instance().displaySelectOverrideFolderInfobar(async(): Promise<void> => {
+        await Sources.SourcesNavigator.OverridesNavigatorView.instance().setupNewWorkspace();
+        await networkPersistanceManager.getOrCreateHeadersUISourceCodeFromUrl(requestUrl);
+      });
+    }
   }
 }
 

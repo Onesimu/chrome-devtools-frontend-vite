@@ -1034,9 +1034,10 @@ declare namespace ProtocolProxyApi {
     invoke_getFrameOwner(params: Protocol.DOM.GetFrameOwnerRequest): Promise<Protocol.DOM.GetFrameOwnerResponse>;
 
     /**
-     * Returns the container of the given node based on container query conditions.
-     * If containerName is given, it will find the nearest container with a matching name;
-     * otherwise it will find the nearest container regardless of its container name.
+     * Returns the query container of the given node based on container query
+     * conditions: containerName, physical, and logical axes. If no axes are
+     * provided, the style container is returned, which is the direct parent or the
+     * closest element with a matching container-name.
      */
     invoke_getContainerForNode(params: Protocol.DOM.GetContainerForNodeRequest): Promise<Protocol.DOM.GetContainerForNodeResponse>;
 
@@ -2909,6 +2910,11 @@ declare namespace ProtocolProxyApi {
     invoke_trackCacheStorageForOrigin(params: Protocol.Storage.TrackCacheStorageForOriginRequest): Promise<Protocol.ProtocolResponseWithError>;
 
     /**
+     * Registers storage key to be notified when an update occurs to its cache storage list.
+     */
+    invoke_trackCacheStorageForStorageKey(params: Protocol.Storage.TrackCacheStorageForStorageKeyRequest): Promise<Protocol.ProtocolResponseWithError>;
+
+    /**
      * Registers origin to be notified when an update occurs to its IndexedDB.
      */
     invoke_trackIndexedDBForOrigin(params: Protocol.Storage.TrackIndexedDBForOriginRequest): Promise<Protocol.ProtocolResponseWithError>;
@@ -2922,6 +2928,11 @@ declare namespace ProtocolProxyApi {
      * Unregisters origin from receiving notifications for cache storage.
      */
     invoke_untrackCacheStorageForOrigin(params: Protocol.Storage.UntrackCacheStorageForOriginRequest): Promise<Protocol.ProtocolResponseWithError>;
+
+    /**
+     * Unregisters storage key from receiving notifications for cache storage.
+     */
+    invoke_untrackCacheStorageForStorageKey(params: Protocol.Storage.UntrackCacheStorageForStorageKeyRequest): Promise<Protocol.ProtocolResponseWithError>;
 
     /**
      * Unregisters origin from receiving notifications for IndexedDB.
@@ -2964,6 +2975,11 @@ declare namespace ProtocolProxyApi {
      * Gets the entries in an given origin's shared storage.
      */
     invoke_getSharedStorageEntries(params: Protocol.Storage.GetSharedStorageEntriesRequest): Promise<Protocol.Storage.GetSharedStorageEntriesResponse>;
+
+    /**
+     * Sets entry with `key` and `value` for a given origin's shared storage.
+     */
+    invoke_setSharedStorageEntry(params: Protocol.Storage.SetSharedStorageEntryRequest): Promise<Protocol.ProtocolResponseWithError>;
 
     /**
      * Deletes entry for `key` (if it exists) for a given origin's shared storage.
@@ -3230,8 +3246,8 @@ declare namespace ProtocolProxyApi {
     bufferUsage(params: Protocol.Tracing.BufferUsageEvent): void;
 
     /**
-     * Contains an bucket of collected trace events. When tracing is stopped collected events will be
-     * send as a sequence of dataCollected events followed by tracingComplete event.
+     * Contains a bucket of collected trace events. When tracing is stopped collected events will be
+     * sent as a sequence of dataCollected events followed by tracingComplete event.
      */
     dataCollected(params: Protocol.Tracing.DataCollectedEvent): void;
 
@@ -3478,6 +3494,16 @@ declare namespace ProtocolProxyApi {
 
   }
   export interface WebAuthnDispatcher {
+    /**
+     * Triggered when a credential is added to an authenticator.
+     */
+    credentialAdded(params: Protocol.WebAuthn.CredentialAddedEvent): void;
+
+    /**
+     * Triggered when a credential is used in a webauthn assertion.
+     */
+    credentialAsserted(params: Protocol.WebAuthn.CredentialAssertedEvent): void;
+
   }
 
   export interface MediaApi {
@@ -3667,8 +3693,8 @@ declare namespace ProtocolProxyApi {
     invoke_setBreakpointsActive(params: Protocol.Debugger.SetBreakpointsActiveRequest): Promise<Protocol.ProtocolResponseWithError>;
 
     /**
-     * Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions or
-     * no exceptions. Initial pause on exceptions state is `none`.
+     * Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions,
+     * or caught exceptions, no exceptions. Initial pause on exceptions state is `none`.
      */
     invoke_setPauseOnExceptions(params: Protocol.Debugger.SetPauseOnExceptionsRequest): Promise<Protocol.ProtocolResponseWithError>;
 

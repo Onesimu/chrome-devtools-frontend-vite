@@ -9,7 +9,6 @@ import {assertNotNullOrUndefined} from '../../../core/platform/platform.js';
 import * as ComponentHelpers from '../../../ui/components/helpers/helpers.js';
 import * as IconButton from '../../../ui/components/icon_button/icon_button.js';
 import * as Coordinator from '../../../ui/components/render_coordinator/render_coordinator.js';
-import * as TwoStatesCounter from '../../../ui/components/two_states_counter/two_states_counter.js';
 import * as UI from '../../../ui/legacy/legacy.js';
 import * as LitHtml from '../../../ui/lit-html/lit-html.js';
 
@@ -18,9 +17,9 @@ import {findNextNodeForKeyboardNavigation} from './BreakpointsViewUtils.js';
 
 const UIStrings = {
   /**
-  *@description Label for a checkbox to toggle pausing on exceptions in the breakpoint sidebar of the Sources panel. When the checkbox is checked, DevTools will pause if an exception is thrown at runtime.
+  *@description Label for a checkbox to toggle pausing on uncaught exceptions in the breakpoint sidebar of the Sources panel. When the checkbox is checked, DevTools will pause if an uncaught exception is thrown at runtime.
   */
-  pauseOnExceptions: 'Pause on exceptions',
+  pauseOnUncaughtExceptions: 'Pause on uncaught exceptions',
   /**
   *@description Label for a checkbox to toggling pausing on caught exceptions in the breakpoint sidebar of the Sources panel. When the checkbox is checked, DevTools will pause if an exception is thrown, but caught (handled) at runtime.
   */
@@ -97,8 +96,10 @@ const MAX_SNIPPET_LENGTH = 200;
 
 export interface BreakpointsViewData {
   breakpointsActive: boolean;
-  pauseOnExceptions: boolean;
+  pauseOnUncaughtExceptions: boolean;
   pauseOnCaughtExceptions: boolean;
+  // TODO(crbug.com/1382762): Remove special casing with dependent toggles as soon as Node LTS caught up on independent pause of exception toggles.
+  independentPauseToggles: boolean;
   groups: BreakpointGroup[];
 }
 
@@ -142,12 +143,12 @@ export class CheckboxToggledEvent extends Event {
   }
 }
 
-export class PauseOnExceptionsStateChangedEvent extends Event {
-  static readonly eventName = 'pauseonexceptionsstatechanged';
+export class PauseOnUncaughtExceptionsStateChangedEvent extends Event {
+  static readonly eventName = 'pauseonuncaughtexceptionsstatechanged';
   data: {checked: boolean};
 
   constructor(checked: boolean) {
-    super(PauseOnExceptionsStateChangedEvent.eventName);
+    super(PauseOnUncaughtExceptionsStateChangedEvent.eventName);
     this.data = {checked};
   }
 }
@@ -206,16 +207,21 @@ export class BreakpointsView extends HTMLElement {
   static readonly litTagName = LitHtml.literal`devtools-breakpoint-view`;
   readonly #shadow = this.attachShadow({mode: 'open'});
 
-  #pauseOnExceptions: boolean = false;
+  #pauseOnUncaughtExceptions: boolean = false;
   #pauseOnCaughtExceptions: boolean = false;
+
+  // TODO(crbug.com/1382762): Remove special casing with dependent toggles as soon as Node LTS caught up on independent pause of exception toggles.
+  #independentPauseToggles: boolean = false;
+
   #breakpointsActive: boolean = true;
   #breakpointGroups: BreakpointGroup[] = [];
   #scheduledRender = false;
   #enqueuedRender = false;
 
   set data(data: BreakpointsViewData) {
-    this.#pauseOnExceptions = data.pauseOnExceptions;
+    this.#pauseOnUncaughtExceptions = data.pauseOnUncaughtExceptions;
     this.#pauseOnCaughtExceptions = data.pauseOnCaughtExceptions;
+    this.#independentPauseToggles = data.independentPauseToggles;
     this.#breakpointsActive = data.breakpointsActive;
     this.#breakpointGroups = data.groups;
 
@@ -224,7 +230,6 @@ export class BreakpointsView extends HTMLElement {
 
   connectedCallback(): void {
     this.#shadow.adoptedStyleSheets = [breakpointsViewStyles];
-    void this.#render();
   }
 
   async #render(): Promise<void> {
@@ -236,43 +241,44 @@ export class BreakpointsView extends HTMLElement {
     }
 
     this.#scheduledRender = true;
-
     await coordinator.write('BreakpointsView render', () => {
       const clickHandler = async(event: Event): Promise<void> => {
         const currentTarget = event.currentTarget as HTMLElement;
         await this.#setSelected(currentTarget);
         event.consume();
       };
+
+      const pauseOnCaughtIsChecked =
+          (this.#independentPauseToggles || this.#pauseOnUncaughtExceptions) && this.#pauseOnCaughtExceptions;
+      const pauseOnCaughtExceptionIsDisabled = !this.#independentPauseToggles && !this.#pauseOnUncaughtExceptions;
       // clang-format off
-    const out = LitHtml.html`
-    <div class='pause-on-exceptions'
-         tabindex='0'
-         @click=${clickHandler}
-         @keydown=${this.#keyDownHandler}
-         data-first-pause>
-      <label class='checkbox-label'>
-        <input type='checkbox' tabindex=-1 ?checked=${this.#pauseOnExceptions} @change=${this.#onPauseOnExceptionsStateChanged.bind(this)}>
-        <span>${i18nString(UIStrings.pauseOnExceptions)}</span>
-      </label>
-    </div>
-    ${this.#pauseOnExceptions ? LitHtml.html`
-      <div class='pause-on-caught-exceptions'
-           tabindex='-1'
-           @click=${clickHandler}
-           @keydown=${this.#keyDownHandler}
-           data-last-pause>
-        <label class='checkbox-label'>
-          <input type='checkbox' tabindex=-1 ?checked=${this.#pauseOnCaughtExceptions} @change=${this.#onPauseOnCaughtExceptionsStateChanged.bind(this)}>
-          <span>${i18nString(UIStrings.pauseOnCaughtExceptions)}</span>
-        </label>
-      </div>
-      ` : LitHtml.nothing}
-    <div role=tree>
-      ${LitHtml.Directives.repeat(
-        this.#breakpointGroups,
-        group => group.url,
-        (group, groupIndex) => LitHtml.html`${this.#renderBreakpointGroup(group, groupIndex)}`)}
-    </div>`;
+      const out = LitHtml.html`
+        <div class='pause-on-uncaught-exceptions'
+            tabindex='0'
+            @click=${clickHandler}
+            @keydown=${this.#keyDownHandler}
+            data-first-pause>
+          <label class='checkbox-label'>
+            <input type='checkbox' tabindex=-1 ?checked=${this.#pauseOnUncaughtExceptions} @change=${this.#onPauseOnUncaughtExceptionsStateChanged.bind(this)}>
+            <span>${i18nString(UIStrings.pauseOnUncaughtExceptions)}</span>
+          </label>
+        </div>
+        <div class='pause-on-caught-exceptions'
+              tabindex='-1'
+              @click=${clickHandler}
+              @keydown=${this.#keyDownHandler}
+              data-last-pause>
+            <label class='checkbox-label'>
+              <input data-pause-on-caught-checkbox type='checkbox' tabindex=-1 ?checked=${pauseOnCaughtIsChecked} ?disabled=${pauseOnCaughtExceptionIsDisabled} @change=${this.#onPauseOnCaughtExceptionsStateChanged.bind(this)}>
+              <span>${i18nString(UIStrings.pauseOnCaughtExceptions)}</span>
+            </label>
+        </div>
+        <div role=tree>
+          ${LitHtml.Directives.repeat(
+            this.#breakpointGroups,
+            group => group.url,
+            (group, groupIndex) => LitHtml.html`${this.#renderBreakpointGroup(group, groupIndex)}`)}
+        </div>`;
       // clang-format on
       LitHtml.render(out, this.#shadow, {host: this});
     });
@@ -378,7 +384,7 @@ export class BreakpointsView extends HTMLElement {
     <button data-edit-breakpoint @click=${clickHandler} title=${title}>
     <${IconButton.Icon.Icon.litTagName} .data=${{
         iconName: 'edit-icon',
-        width: '10px',
+        width: '14px',
         color: 'var(--color-text-secondary)',
       } as IconButton.Icon.IconData}
       }>
@@ -399,7 +405,7 @@ export class BreakpointsView extends HTMLElement {
     <button data-remove-breakpoint @click=${clickHandler} title=${tooltipText}>
     <${IconButton.Icon.Icon.litTagName} .data=${{
         iconName: 'close-icon',
-        width: '7px',
+        width: '10px',
         color: 'var(--color-text-secondary)',
       } as IconButton.Icon.IconData}
       }>
@@ -451,12 +457,15 @@ export class BreakpointsView extends HTMLElement {
     const toggleHandler = (event: Event): void => {
       const htmlDetails = event.target as HTMLDetailsElement;
       group.expanded = htmlDetails.open;
-      Host.userMetrics.actionTaken(Host.UserMetrics.Action.BreakpointGroupExpandedStateChanged);
       this.dispatchEvent(new ExpandedStateChangedEvent(group.url, group.expanded));
     };
     const clickHandler = async(event: Event): Promise<void> => {
       const selected = event.currentTarget as HTMLElement;
       await this.#setSelected(selected);
+      // Record the metric for expanding/collapsing in the click handler,
+      // as we only then get the number of expand/collapse actions that were
+      // initiated by the user.
+      Host.userMetrics.actionTaken(Host.UserMetrics.Action.BreakpointGroupExpandedStateChanged);
       event.consume();
     };
     const classMap = {
@@ -479,32 +488,15 @@ export class BreakpointsView extends HTMLElement {
           <span class='group-header' aria-hidden=true>${this.#renderFileIcon()}<span class='group-header-title' title='${group.url}'>${group.name}</span></span>
           <span class='group-hover-actions'>
             ${this.#renderRemoveBreakpointButton(group.breakpointItems, i18nString(UIStrings.removeAllBreakpointsInFile))}
-            ${this.#renderBreakpointCounter(group)}
           </span>
         </summary>
         ${LitHtml.Directives.repeat(
           group.breakpointItems,
-          item => item.location,
+          item => item.id,
           (item, breakpointItemIndex) => this.#renderBreakpointEntry(item, group.editable, groupIndex, breakpointItemIndex))}
       </div>
       `;
     // clang-format on
-  }
-
-  #renderBreakpointCounter(group: BreakpointGroup): LitHtml.TemplateResult {
-    const numActive = group.breakpointItems.reduce((previousValue: number, currentValue: BreakpointItem) => {
-      return currentValue.status === BreakpointStatus.ENABLED ? previousValue + 1 : previousValue;
-    }, 0);
-    const numInactive = group.breakpointItems.length - numActive;
-    // clang-format off
-    const inactiveActiveCounter = LitHtml.html`
-    <${TwoStatesCounter.TwoStatesCounter.TwoStatesCounter.litTagName} .data=${
-        {active: numActive, inactive: numInactive, width: '15px', height: '15px'} as
-        TwoStatesCounter.TwoStatesCounter.TwoStatesCounterData}>
-    </${TwoStatesCounter.TwoStatesCounter.TwoStatesCounter.litTagName}>
-    `;
-    // clang-format on
-    return inactiveActiveCounter;
   }
 
   #renderFileIcon(): LitHtml.TemplateResult {
@@ -645,9 +637,28 @@ export class BreakpointsView extends HTMLElement {
     this.dispatchEvent(new PauseOnCaughtExceptionsStateChangedEvent(checked));
   }
 
-  #onPauseOnExceptionsStateChanged(e: Event): void {
+  #onPauseOnUncaughtExceptionsStateChanged(e: Event): void {
     const {checked} = e.target as HTMLInputElement;
-    this.dispatchEvent(new PauseOnExceptionsStateChangedEvent(checked));
+    if (!this.#independentPauseToggles) {
+      const pauseOnCaughtCheckbox = this.#shadow.querySelector<HTMLInputElement>('[data-pause-on-caught-checkbox]');
+      assertNotNullOrUndefined(pauseOnCaughtCheckbox);
+      if (!checked && pauseOnCaughtCheckbox.checked) {
+        // If we can only pause on caught excpetions if we pause on uncaught exceptions, make sure to
+        // uncheck the pause on caught exception checkbox.
+        pauseOnCaughtCheckbox.click();
+      }
+
+      void coordinator.write('update pause-on-uncaught-exception', () => {
+        // Disable/enable the pause on caught exception checkbox depending on whether
+        // or not we are pausing on uncaught exceptions.
+        if (checked) {
+          pauseOnCaughtCheckbox.disabled = false;
+        } else {
+          pauseOnCaughtCheckbox.disabled = true;
+        }
+      });
+    }
+    this.dispatchEvent(new PauseOnUncaughtExceptionsStateChangedEvent(checked));
   }
 }
 

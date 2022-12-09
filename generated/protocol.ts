@@ -704,6 +704,7 @@ export namespace Audits {
     ExcludeInvalidSameParty = 'ExcludeInvalidSameParty',
     ExcludeSamePartyCrossPartyContext = 'ExcludeSamePartyCrossPartyContext',
     ExcludeDomainNonASCII = 'ExcludeDomainNonASCII',
+    ExcludeThirdPartyCookieBlockedInFirstPartySet = 'ExcludeThirdPartyCookieBlockedInFirstPartySet',
   }
 
   export const enum CookieWarningReason {
@@ -1320,6 +1321,10 @@ export namespace BackgroundService {
      * A list of event-specific information.
      */
     eventMetadata: EventMetadata[];
+    /**
+     * Storage key this event belongs to.
+     */
+    storageKey: string;
   }
 
   export interface StartObservingRequest {
@@ -1412,6 +1417,8 @@ export namespace Browser {
     DurableStorage = 'durableStorage',
     Flash = 'flash',
     Geolocation = 'geolocation',
+    IdleDetection = 'idleDetection',
+    LocalFonts = 'localFonts',
     Midi = 'midi',
     MidiSysex = 'midiSysex',
     Nfc = 'nfc',
@@ -1420,16 +1427,18 @@ export namespace Browser {
     PeriodicBackgroundSync = 'periodicBackgroundSync',
     ProtectedMediaIdentifier = 'protectedMediaIdentifier',
     Sensors = 'sensors',
+    StorageAccess = 'storageAccess',
     VideoCapture = 'videoCapture',
     VideoCapturePanTiltZoom = 'videoCapturePanTiltZoom',
-    IdleDetection = 'idleDetection',
     WakeLockScreen = 'wakeLockScreen',
     WakeLockSystem = 'wakeLockSystem',
+    WindowManagement = 'windowManagement',
   }
 
   export const enum PermissionSetting {
     Granted = 'granted',
     Denied = 'denied',
+    Prompt = 'prompt',
   }
 
   /**
@@ -2244,6 +2253,14 @@ export namespace CSS {
      * Optional name for the container.
      */
     name?: string;
+    /**
+     * Optional physical axes queried for the container.
+     */
+    physicalAxes?: DOM.PhysicalAxes;
+    /**
+     * Optional logical axes queried for the container.
+     */
+    logicalAxes?: DOM.LogicalAxes;
   }
 
   /**
@@ -2905,6 +2922,10 @@ export namespace CacheStorage {
      */
     securityOrigin: string;
     /**
+     * Storage key of the cache.
+     */
+    storageKey: string;
+    /**
      * The name of the cache.
      */
     cacheName: string;
@@ -2945,9 +2966,14 @@ export namespace CacheStorage {
 
   export interface RequestCacheNamesRequest {
     /**
+     * At least and at most one of securityOrigin, storageKey must be specified.
      * Security origin.
      */
-    securityOrigin: string;
+    securityOrigin?: string;
+    /**
+     * Storage key.
+     */
+    storageKey?: string;
   }
 
   export interface RequestCacheNamesResponse extends ProtocolResponseWithError {
@@ -3125,11 +3151,11 @@ export namespace DOM {
     ScrollbarCorner = 'scrollbar-corner',
     Resizer = 'resizer',
     InputListButton = 'input-list-button',
-    PageTransition = 'page-transition',
-    PageTransitionContainer = 'page-transition-container',
-    PageTransitionImageWrapper = 'page-transition-image-wrapper',
-    PageTransitionOutgoingImage = 'page-transition-outgoing-image',
-    PageTransitionIncomingImage = 'page-transition-incoming-image',
+    ViewTransition = 'view-transition',
+    ViewTransitionGroup = 'view-transition-group',
+    ViewTransitionImagePair = 'view-transition-image-pair',
+    ViewTransitionOld = 'view-transition-old',
+    ViewTransitionNew = 'view-transition-new',
   }
 
   /**
@@ -3148,6 +3174,24 @@ export namespace DOM {
     QuirksMode = 'QuirksMode',
     LimitedQuirksMode = 'LimitedQuirksMode',
     NoQuirksMode = 'NoQuirksMode',
+  }
+
+  /**
+   * ContainerSelector physical axes
+   */
+  export const enum PhysicalAxes {
+    Horizontal = 'Horizontal',
+    Vertical = 'Vertical',
+    Both = 'Both',
+  }
+
+  /**
+   * ContainerSelector logical axes
+   */
+  export const enum LogicalAxes {
+    Inline = 'Inline',
+    Block = 'Block',
+    Both = 'Both',
   }
 
   /**
@@ -4067,6 +4111,8 @@ export namespace DOM {
   export interface GetContainerForNodeRequest {
     nodeId: NodeId;
     containerName?: string;
+    physicalAxes?: PhysicalAxes;
+    logicalAxes?: LogicalAxes;
   }
 
   export interface GetContainerForNodeResponse extends ProtocolResponseWithError {
@@ -7914,6 +7960,7 @@ export namespace Network {
     SameSiteUnspecifiedTreatedAsLax = 'SameSiteUnspecifiedTreatedAsLax',
     SameSiteNoneInsecure = 'SameSiteNoneInsecure',
     UserPreferences = 'UserPreferences',
+    ThirdPartyBlockedInFirstPartySet = 'ThirdPartyBlockedInFirstPartySet',
     SyntaxError = 'SyntaxError',
     SchemeNotSupported = 'SchemeNotSupported',
     OverwriteSecure = 'OverwriteSecure',
@@ -7940,6 +7987,7 @@ export namespace Network {
     SameSiteUnspecifiedTreatedAsLax = 'SameSiteUnspecifiedTreatedAsLax',
     SameSiteNoneInsecure = 'SameSiteNoneInsecure',
     UserPreferences = 'UserPreferences',
+    ThirdPartyBlockedInFirstPartySet = 'ThirdPartyBlockedInFirstPartySet',
     UnknownError = 'UnknownError',
     SchemefulSameSiteStrict = 'SchemefulSameSiteStrict',
     SchemefulSameSiteLax = 'SchemefulSameSiteLax',
@@ -11073,6 +11121,7 @@ export namespace Page {
     InjectedStyleSheet = 'InjectedStyleSheet',
     KeepaliveRequest = 'KeepaliveRequest',
     Dummy = 'Dummy',
+    AuthorizationHeader = 'AuthorizationHeader',
     ContentSecurityHandler = 'ContentSecurityHandler',
     ContentWebAuthenticationAPI = 'ContentWebAuthenticationAPI',
     ContentFileChooser = 'ContentFileChooser',
@@ -11890,8 +11939,9 @@ export namespace Page {
 
   export const enum SetSPCTransactionModeRequestMode {
     None = 'none',
-    Autoaccept = 'autoaccept',
-    Autoreject = 'autoreject',
+    AutoAccept = 'autoAccept',
+    AutoReject = 'autoReject',
+    AutoOptOut = 'autoOptOut',
   }
 
   export interface SetSPCTransactionModeRequest {
@@ -12945,6 +12995,7 @@ export namespace Storage {
     Join = 'join',
     Leave = 'leave',
     Update = 'update',
+    Loaded = 'loaded',
     Bid = 'bid',
     Win = 'win',
   }
@@ -13202,6 +13253,13 @@ export namespace Storage {
     origin: string;
   }
 
+  export interface TrackCacheStorageForStorageKeyRequest {
+    /**
+     * Storage key.
+     */
+    storageKey: string;
+  }
+
   export interface TrackIndexedDBForOriginRequest {
     /**
      * Security origin.
@@ -13221,6 +13279,13 @@ export namespace Storage {
      * Security origin.
      */
     origin: string;
+  }
+
+  export interface UntrackCacheStorageForStorageKeyRequest {
+    /**
+     * Storage key.
+     */
+    storageKey: string;
   }
 
   export interface UntrackIndexedDBForOriginRequest {
@@ -13281,6 +13346,17 @@ export namespace Storage {
     entries: SharedStorageEntry[];
   }
 
+  export interface SetSharedStorageEntryRequest {
+    ownerOrigin: string;
+    key: string;
+    value: string;
+    /**
+     * If `ignoreIfPresent` is included and true, then only sets the entry if
+     * `key` doesn't already exist.
+     */
+    ignoreIfPresent?: boolean;
+  }
+
   export interface DeleteSharedStorageEntryRequest {
     ownerOrigin: string;
     key: string;
@@ -13303,6 +13379,10 @@ export namespace Storage {
      */
     origin: string;
     /**
+     * Storage key to update.
+     */
+    storageKey: string;
+    /**
      * Name of cache in origin.
      */
     cacheName: string;
@@ -13316,6 +13396,10 @@ export namespace Storage {
      * Origin to update.
      */
     origin: string;
+    /**
+     * Storage key to update.
+     */
+    storageKey: string;
   }
 
   /**
@@ -14223,8 +14307,8 @@ export namespace Tracing {
   }
 
   /**
-   * Contains an bucket of collected trace events. When tracing is stopped collected events will be
-   * send as a sequence of dataCollected events followed by tracingComplete event.
+   * Contains a bucket of collected trace events. When tracing is stopped collected events will be
+   * sent as a sequence of dataCollected events followed by tracingComplete event.
    */
   export interface DataCollectedEvent {
     value: any[];
@@ -15034,6 +15118,22 @@ export namespace WebAuthn {
     authenticatorId: AuthenticatorId;
     enabled: boolean;
   }
+
+  /**
+   * Triggered when a credential is added to an authenticator.
+   */
+  export interface CredentialAddedEvent {
+    authenticatorId: AuthenticatorId;
+    credential: Credential;
+  }
+
+  /**
+   * Triggered when a credential is used in a webauthn assertion.
+   */
+  export interface CredentialAssertedEvent {
+    authenticatorId: AuthenticatorId;
+    credential: Credential;
+  }
 }
 
 /**
@@ -15776,6 +15876,7 @@ export namespace Debugger {
 
   export const enum SetPauseOnExceptionsRequestState {
     None = 'none',
+    Caught = 'caught',
     Uncaught = 'uncaught',
     All = 'all',
   }
