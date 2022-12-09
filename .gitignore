@@ -43,13 +43,21 @@ test/perf/.generated
 /.vscode/tasks.json
 /.vscode/launch.json
 
-dist/
-public/
+/dist/
+/public/
 *.gn
 *.gni
 OWNERS
 .clang-format
 .eslintrc.js
-legacy_test_runner/
-legacy/
-core/i18n/locales/
+/legacy_test_runner/
+/legacy/
+/core/i18n/locales/
+
+/devtools_app.html
+/inspector.html
+/js_app.html
+/ndb_app.html
+/node_app.html
+/worker_app.html
+/device_mode_emulation_frame.html
