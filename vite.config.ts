@@ -20,7 +20,7 @@ export default {
     rollupOptions: {
       input: _devtools_templates.map(it => path.resolve(__dirname, it + '.html')),
       output: {
-        chunkFileNames: '[name].js',
+        chunkFileNames: 'js/[name].js',
         entryFileNames: '[name].js',
         assetFileNames: 'static/[name].[ext]',
         // manualChunks(id) { // 静态资源分拆打包
@@ -42,7 +42,6 @@ export default {
     resolveId(source, importer, options) {
       if (source.endsWith('.css.legacy.js') || source.endsWith('.css.js') ){
         const css = source.replace('.js', '').replace('.legacy', '')
-        // console.log(source, css, importer, options)
         var ap = path.resolve(path.dirname(importer), css + '.js') + '?css=js'
         if (source.endsWith('.css.legacy.js')) ap += '&legacy'
         return ap
@@ -55,7 +54,7 @@ export default {
       if (id.endsWith('?css=js') || id.endsWith('?css=js&legacy') ) {
         const content = fs.readFileSync(id.split('?')[0].replace('.js', ''), {encoding:'utf8', flag:'r'})
         const stylesheetContents = content.replace(/\`/g, '\\\'').replace(/\\/g, '\\\\')
-        // .replace(/\/\*.+\*\//gs, '')
+          .replace(/\/\*.+?\*\//gs, '')
         let exportStatement;
         if (id.endsWith('?css=js&legacy')) {
           exportStatement = `export default {
