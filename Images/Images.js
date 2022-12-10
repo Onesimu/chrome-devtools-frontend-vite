@@ -34,9 +34,9 @@ const devtools_image_files = [
   "touchCursor_2x.png",
   "touchCursor.png",
   "whatsnew.avif",
-]
+],
 
-const devtools_svg_sources = [
+devtools_svg_sources = [
   "accelerometer-back.svg",
   "accelerometer-front.svg",
   "accessibility-icon.svg",

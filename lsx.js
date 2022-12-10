@@ -1,4 +1,5 @@
-const LiveScript = require('livescript')
+// const LiveScript = require('livescript')
+import LiveScript from './livescript.js'
 const lsc = it => LiveScript.compile(it, {bare:true, header: false, const: 0})
 
 String.prototype.e = String.prototype.e || String.prototype.replace

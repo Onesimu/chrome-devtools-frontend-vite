@@ -12,7 +12,7 @@ import '../../panels/console/console-meta.js';
 // import '../../panels/changes/changes-meta.js';
 import '../../ui/components/linear_memory_inspector/linear_memory_inspector-meta.js';
 import '../../panels/settings/settings-meta.js';
-import '../../panels/protocol_monitor/protocol_monitor-meta.js';
+// import '../../panels/protocol_monitor/protocol_monitor-meta.js';
 import '../../models/persistence/persistence-meta.js';
 import '../../models/logs/logs-meta.js';
 import '../main/main-meta.js';
